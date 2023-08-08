@@ -1,13 +1,13 @@
-from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
-from keras.preprocessing import image
+from tensorflow.keras.applications.xception import Xception, preprocess_input
+from tensorflow.keras.preprocessing import image
 from PIL import Image
 import tensorflow as tf
-from keras.layers import Dense, Dropout, GlobalAveragePooling2D
-from keras.models import Model
+from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D
+from tensorflow.keras.models import Model
 import numpy as np
-from keras import optimizers
+from tensorflow.keras import optimizers
 
-class ImageClassifier():
+class ImagesClassifier():
     def __init__(self, train_data, val_data, num_epochs, verbose):
         # Initial variables
         self.train_data = train_data
@@ -16,10 +16,10 @@ class ImageClassifier():
         self.verbose = verbose
 
         # Image classifier model instance variables
-        self.resnet_model = ResNet50(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
-        self.last_output = self.resnet_model.output
+        self.xception_model = Xception(include_top=False, weights='imagenet', input_shape=(75, 75, 3))
+        self.last_output = self.xception_model.output
         self.last_output = GlobalAveragePooling2D()(self.last_output)
-        self.pretrained_model = Model(self.resnet_model.input, self.last_output)
+        self.pretrained_model = Model(self.xception_model.input, self.last_output)
         self.model = Model()
 
     def generate_layers(self):
@@ -38,13 +38,13 @@ class ImageClassifier():
         self.model = Model(self.pretrained_model.input, x)
 
     def classify(self, image_path):
-        image_path = image_path.reshape(75, 75, -1)
-        image_path = tf.keras.utils.img_to_array(image_path)
-        image_path = np.expand_dims(image_path, axis=0)
-        image_path = image_path / 255
+        new_img = tf.keras.utils.load_img(image_path, target_size=(224, 224))
+        img = tf.keras.utils.img_to_array(new_img)
+        img = np.expand_dims(img, axis=0)
+        img = img / 255
 
         self.load_weights()
-        predictions = self.model.predict(image_path)
+        predictions = self.model.predict(img)
         print("Prediction results", predictions)
         class_label = "X-ray" if predictions[0][0] >= 0.5 else "Non-X-ray"
 
@@ -64,8 +64,19 @@ class ImageClassifier():
             optimizer=optimizers.RMSprop(learning_rate=1e-4),
             metrics=['accuracy']
         )
-        file_path = 'image_classifier.h5'
+        file_path = 'xray_classifier.h5'
         self.model.load_weights(filepath=file_path)
+
+    def predict(self):
+        image_path = "./train/NORMAL/IM-0115-0001.jpeg"
+        new_img = tf.keras.utils.load_img(image_path, target_size=(224, 224))
+        img = tf.keras.utils.img_to_array(new_img)
+        img = np.expand_dims(img, axis=0)
+        img = img / 255
+
+        # print("Following is our prediction:")
+        prediction = self.model.predict(img)
+        return prediction, new_img
 
     def forward(self):
         self.generate_layers()
@@ -85,6 +96,6 @@ class ImageClassifier():
             epochs=self.epochs,
             verbose=self.verbose
         )
-        file_path = 'image_classifier.h5'
+        file_path = 'xray_classifier.h5'
         self.model.save(file_path)
         return history
